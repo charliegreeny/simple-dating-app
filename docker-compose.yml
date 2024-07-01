@@ -1,0 +1,36 @@
+version: "3.9"
+
+
+services:
+  dating-app:
+    container_name: dating-app
+    build:
+      dockerfile: Dockerfile
+    environment:
+      - DB_ADDRESS=dating-db
+      - DB_USER=root
+      - DB_PASSWORD=password
+      - DB_NAME=dating_users
+    ports:
+      - "8080:8080"
+    depends_on:
+      - dating-db
+    networks:
+      - dating-app-network
+
+  dating-db:
+    container_name: dating-db
+    image: mysql:8.4.0
+    environment:
+      - MYSQL_ROOT_PASSWORD=password
+    volumes:
+      - ./scripts/init_db.sql:/docker-entrypoint-initdb.d/datadump.sql
+    ports:
+      - "3306:3306"
+    networks:
+      - dating-app-network
+
+
+networks:
+  dating-app-network:
+    external: true
