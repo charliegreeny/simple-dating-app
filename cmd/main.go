@@ -4,6 +4,7 @@ import (
 	"github.com/charliegreeny/simple-dating-app/api"
 	"github.com/charliegreeny/simple-dating-app/config"
 	"github.com/charliegreeny/simple-dating-app/internal/app"
+	"github.com/charliegreeny/simple-dating-app/internal/pkg/match"
 	"github.com/charliegreeny/simple-dating-app/internal/pkg/token"
 	"github.com/charliegreeny/simple-dating-app/internal/pkg/user"
 	"github.com/charliegreeny/simple-dating-app/middleware"
@@ -24,6 +25,7 @@ func main() {
 			api.NewDiscoveryHandler,
 			token.NewLogin,
 			user.NewCache,
+			match.NewMatcher,
 			newTokenParam,
 			user.NewService,
 		),

@@ -1,6 +1,7 @@
 package user
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"github.com/DATA-DOG/go-sqlmock"
@@ -83,7 +84,7 @@ func Test_service_Get(t *testing.T) {
 				m.WillReturnError(tt.stubErr)
 			}
 
-			got, err := s.Get(tt.id)
+			got, err := s.Get(context.Background(), tt.id)
 			if tt.wantErr(t, err) {
 				return
 			}
@@ -217,6 +218,7 @@ func Test_service_Create(t *testing.T) {
 				db:      gormDb,
 				uuidGen: mockUUID,
 				log:     zap.NewNop(),
+				cache:   NewCache(gormDb),
 			}
 			mock.ExpectBegin()
 			m := mock.ExpectExec("INSERT INTO `users` (.+) VALUES (.+)").
@@ -228,7 +230,7 @@ func Test_service_Create(t *testing.T) {
 				mock.ExpectCommit()
 			}
 
-			got, err := s.Create(tt.input)
+			got, err := s.Create(context.Background(), tt.input)
 			tt.wantErr(t, err, fmt.Sprintf("Create(%v)", tt.input))
 			assert.Equalf(t, tt.want, got, "Create(%v)", tt.input)
 			_ = db.Close()

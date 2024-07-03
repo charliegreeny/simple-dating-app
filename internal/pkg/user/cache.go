@@ -31,7 +31,7 @@ func (c *Cache) fetchAll() app.Cache[string, *Output] {
 func (c *Cache) GetAll(ctx context.Context) []*Output {
 	var users []*Output
 	for _, v := range c.c {
-		if v.ID == ctx.Value(&app.UserCtxKey{}).(*Output).ID {
+		if v.ID == GetUserFromCtx(ctx).ID {
 			continue
 		}
 		users = append(users, v)

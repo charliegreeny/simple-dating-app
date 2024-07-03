@@ -34,7 +34,7 @@ func (a Auth) Auth(next http.Handler) http.Handler {
 			return
 		}
 		ctx := r.Context()
-		next.ServeHTTP(w, r.WithContext(context.WithValue(ctx, &app.UserCtxKey{}, u)))
+		next.ServeHTTP(w, r.WithContext(context.WithValue(ctx, user.CtxKey{}, u)))
 	}
 	return http.HandlerFunc(fn)
 }

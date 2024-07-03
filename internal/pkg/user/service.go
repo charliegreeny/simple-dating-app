@@ -80,3 +80,9 @@ func (s service) updateCache(ctx context.Context, o *Output) {
 		}
 	}(o)
 }
+
+func GetUserFromCtx(ctx context.Context) *Output {
+	return ctx.Value(CtxKey{}).(*Output)
+}
+
+type CtxKey struct{}
