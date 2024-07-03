@@ -74,6 +74,25 @@ func TestEntity_toOutput(t *testing.T) {
 				Password: "Password",
 			},
 		},
+		{
+			name: "successfully convert to output with correct age with birthday today",
+			entity: &Entity{
+				ID:          "123",
+				Name:        "Charlie G",
+				Gender:      "Male",
+				DateOfBirth: time.Now().AddDate(-20, 0, 0),
+				Email:       "test@email.com",
+				Password:    "Password",
+			},
+			want: &Output{
+				ID:       "123",
+				Email:    "test@email.com",
+				Name:     "Charlie G",
+				Gender:   "Male",
+				Age:      20,
+				Password: "Password",
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

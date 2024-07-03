@@ -33,11 +33,7 @@ func (e Entity) TableName() string {
 }
 
 func (e Entity) toOutput() *Output {
-	now := time.Now()
-	age := now.Year() - e.DateOfBirth.Year()
-	if now.YearDay() < e.DateOfBirth.YearDay() {
-		age--
-	}
+	age := calcAge(e.DateOfBirth)
 	return &Output{
 		ID:       e.ID,
 		Name:     e.Name,

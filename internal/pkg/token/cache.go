@@ -1,45 +1,33 @@
 package token
 
 import (
-	"github.com/charliegreeny/simple-dating-app/internal/model"
+	"context"
+	"errors"
+	"github.com/charliegreeny/simple-dating-app/internal/app"
 	"github.com/charliegreeny/simple-dating-app/internal/pkg/user"
 )
 
-var errInvalidToken = model.ErrUnauthorized{Message: "invalid token"}
-
-type Cache struct {
-	c map[string]*user.Output
-	u model.GetterCreator[*user.Input, *user.Output]
+type cache struct {
+	c map[string]*user.Output `name:"jwtCache"`
 }
 
-func NewCache(userGetter model.GetterCreator[*user.Input, *user.Output]) *Cache {
-	return &Cache{c: make(map[string]*user.Output), u: userGetter}
+func NewCache() app.Cache[string, *user.Output] {
+	return &cache{c: map[string]*user.Output{}}
 }
 
-func (c Cache) LoginUser(input *LoginInput) (*LoginOutput, error) {
-	u, err := c.u.Get(input.ID)
-	if err != nil {
-		return nil, err
-	}
-	if input.Password != u.Password {
-		return nil, model.ErrUnauthorized{Message: "invalid password"}
-	}
-	token, err := createToken(u.ID)
-	if err != nil {
-		return nil, err
-	}
-	c.c[token] = u
-	return &LoginOutput{Token: token}, nil
-}
-
-func (c Cache) GetLoginUser(jwt string) (*user.Output, error) {
-	ok := verifyToken(jwt)
-	if !ok {
-		return nil, errInvalidToken
-	}
+func (c cache) Get(_ context.Context, jwt string) (*user.Output, error) {
 	u, ok := c.c[jwt]
-	if !ok {
-		return nil, errInvalidToken
+	if !ok || !verifyToken(jwt) {
+		return nil, errors.New("jwt not valid")
 	}
 	return u, nil
+}
+
+func (c cache) GetAll(context.Context) []*user.Output {
+	return nil
+}
+
+func (c cache) Add(_ context.Context, jwt string, u *user.Output) error {
+	c.c[jwt] = u
+	return nil
 }
