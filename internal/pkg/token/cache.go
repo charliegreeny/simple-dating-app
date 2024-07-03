@@ -18,7 +18,7 @@ func NewCache() app.Cache[string, *user.Output] {
 func (c cache) Get(_ context.Context, jwt string) (*user.Output, error) {
 	u, ok := c.c[jwt]
 	if !ok || !verifyToken(jwt) {
-		return nil, errors.New("jwt not valid")
+		return nil, errors.New("invalid token")
 	}
 	return u, nil
 }

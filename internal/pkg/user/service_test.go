@@ -218,7 +218,8 @@ func Test_service_Create(t *testing.T) {
 				db:      gormDb,
 				uuidGen: mockUUID,
 				log:     zap.NewNop(),
-				cache:   NewCache(gormDb),
+				//TODO add mock cache and assert called once
+				cache: NewCache(gormDb),
 			}
 			mock.ExpectBegin()
 			m := mock.ExpectExec("INSERT INTO `users` (.+) VALUES (.+)").

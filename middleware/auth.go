@@ -30,7 +30,7 @@ func (a Auth) Auth(next http.Handler) http.Handler {
 		if err != nil {
 			enc := json.NewEncoder(w)
 			w.WriteHeader(http.StatusUnauthorized)
-			_ = enc.Encode(app.ErrorOutput{Message: "user needs to logged in to use this service"})
+			_ = enc.Encode(app.ErrorOutput{Message: "user needs to log in to use this service"})
 			return
 		}
 		ctx := r.Context()

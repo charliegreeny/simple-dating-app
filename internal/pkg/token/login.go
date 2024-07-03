@@ -7,19 +7,17 @@ import (
 	"github.com/charliegreeny/simple-dating-app/internal/pkg/user"
 )
 
-var errInvalidToken = app.ErrUnauthorized{Message: "invalid token"}
-
 type Login struct {
-	jwtUserCache app.Cache[string, *user.Output] `name:"jwtCache"`
-	u            app.GetterCreator[*user.Input, *user.Output]
+	jwtUserCache app.Cache[string, *user.Output]
+	userGetter   app.IDGetter[*user.Output]
 }
 
 func NewLogin(params *config.TokenParams) *Login {
-	return &Login{jwtUserCache: params.Cache, u: params.UserGetterCreator}
+	return &Login{jwtUserCache: params.Cache, userGetter: params.UserGetterCreator}
 }
 
 func (l Login) LoginUser(ctx context.Context, input *LoginInput) (*LoginOutput, error) {
-	u, err := l.u.Get(ctx, input.ID)
+	u, err := l.userGetter.Get(ctx, input.ID)
 	if err != nil {
 		return nil, err
 	}
