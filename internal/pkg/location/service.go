@@ -70,6 +70,7 @@ func (s service) Update(ctx context.Context, input *app.Location) (*app.Location
 	if input == u.Loc {
 		return u.Loc, nil
 	}
+ u.Loc = input
 	go func(u *app.User) {
 		s.updateUserCache(u, ctx, input)
 	}(u)
