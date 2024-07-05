@@ -43,5 +43,6 @@ func (l Login) Login(w http.ResponseWriter, r *http.Request) {
 		response(w, enc, app.ErrorOutput{Message: err.Error()}, http.StatusInternalServerError)
 		return
 	}
-	response(w, enc, respBody, http.StatusOK)
+	w.WriteHeader(http.StatusOK)
+	_ = enc.Encode(respBody)
 }

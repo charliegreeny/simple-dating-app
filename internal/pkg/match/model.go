@@ -7,5 +7,5 @@ type SwipeInput struct {
 
 type SwipeOutput struct {
 	Matched bool   `json:"matched"`
-	MatchID string `json:"matchId"`
+	MatchID string `json:"matchId,omitempty"`
 }

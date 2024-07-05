@@ -1,7 +1,7 @@
 package app
 
 type ErrorOutput struct {
-	Message string `json:"message"`
+	Message string `json:"error"`
 }
 
 type User struct {

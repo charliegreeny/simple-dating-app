@@ -79,14 +79,15 @@ func (p service) Update(ctx context.Context, input *app.Preference) (*app.Prefer
 	if input == user.Pref {
 		return user.Pref, nil
 	}
+	input.UserID = user.ID
+	user.Pref = setAllFields(input, user.Pref)
 	go func(u *app.User) {
 		err := p.userCache.Add(ctx, input.UserID, u)
 		if err != nil {
 			p.log.Warn("failed to update user location in cache", zap.Error(err))
 		}
 	}(user)
-	input.UserID = user.ID
-	err := p.db.Save(&input).Error
+	err := p.db.Save(&user.Pref).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, app.ErrNotFound{
@@ -100,7 +101,23 @@ func (p service) Update(ctx context.Context, input *app.Preference) (*app.Prefer
 		}
 		return nil, err
 	}
-	return input, nil
+	return user.Pref, nil
+}
+
+func setAllFields(input *app.Preference, current *app.Preference) *app.Preference {
+	if input.MaxAge == nil {
+		input.MaxAge = current.MaxAge
+	}
+	if input.Gender == "" {
+		input.Gender = current.Gender
+	}
+	if input.MinAge == 0 {
+		input.MinAge = current.MinAge
+	}
+	if input.MaxDistance == 0 {
+		input.MaxDistance = current.MaxDistance
+	}
+	return input
 }
 
 func DefaultPreferences(userID, userGender string) *app.Preference {

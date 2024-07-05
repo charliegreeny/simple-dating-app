@@ -32,7 +32,6 @@ func (s swipe) Match(ctx context.Context, input *SwipeInput) (*SwipeOutput, erro
 	if !ok {
 		return &SwipeOutput{
 			Matched: false,
-			MatchID: input.MatchID,
 		}, nil
 	}
 	if slices.Contains(matchSwipes, currentUser.ID) {
@@ -43,7 +42,6 @@ func (s swipe) Match(ctx context.Context, input *SwipeInput) (*SwipeOutput, erro
 	}
 	return &SwipeOutput{
 		Matched: false,
-		MatchID: input.MatchID,
 	}, nil
 }
 

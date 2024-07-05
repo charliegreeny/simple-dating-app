@@ -21,13 +21,22 @@ func NewDiscoveryHandler(cache app.Cache[string, *app.User], matcher match.Match
 }
 
 func (d Discovery) GetEligibleUsersHandler(w http.ResponseWriter, r *http.Request) {
+	enc := json.NewEncoder(w)
 	users := d.cache.GetAll(r.Context())
 	currentUser := appctx.GetUserFromCtx(r.Context())
 	eligibleUsers := d.filter.Apply(r.Context(), currentUser.Pref, users)
+	if len(eligibleUsers) == 0 {
+		response(
+			w,
+			enc,
+			&app.ErrorOutput{Message: "no users found in your area, make sure your location is updated using `x-location-header`"},
+			http.StatusOK)
+	}
 	respBody := struct {
-		Users []*app.User `json:"users"`
+		Users []*app.User `json:"results"`
 	}{eligibleUsers}
-	response(w, json.NewEncoder(w), respBody, http.StatusOK)
+	w.WriteHeader(http.StatusOK)
+	_ = enc.Encode(respBody)
 	return
 }
 

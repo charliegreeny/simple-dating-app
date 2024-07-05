@@ -28,6 +28,7 @@ func main() {
 			handler.NewUserHandler,
 			handler.NewLoginHandler,
 			handler.NewDiscoveryHandler,
+			handler.NewPreference,
 			token.NewLogin,
 			token.NewCache,
 			cache.NewCache,

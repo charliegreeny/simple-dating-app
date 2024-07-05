@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/charliegreeny/simple-dating-app/app"
+	"github.com/charliegreeny/simple-dating-app/appctx"
 	"github.com/charliegreeny/simple-dating-app/internal/pkg/user/service"
-	"github.com/go-chi/chi"
 	"github.com/go-playground/validator/v10"
 	"net/http"
 )
@@ -19,10 +19,15 @@ func NewUserHandler(validator *validator.Validate, creator app.GetterCreator[*se
 	return User{validator: validator, GetterCreator: creator}
 }
 
+type Response[T any] struct {
+	Result T `json:"result"`
+}
+
 func (u User) GetUserHandler(w http.ResponseWriter, r *http.Request) {
 	enc := json.NewEncoder(w)
-	id := chi.URLParam(r, "id")
-	resp, err := u.Get(r.Context(), id)
+	currentUser := appctx.GetUserFromCtx(r.Context())
+
+	resp, err := u.Get(r.Context(), currentUser.ID)
 	if err != nil {
 		if errors.As(err, &app.ErrNotFound{}) {
 			response(w, enc, app.ErrorOutput{Message: err.Error()}, http.StatusNotFound)
@@ -60,7 +65,8 @@ func (u User) CreateUserHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func response(w http.ResponseWriter, enc *json.Encoder, resp any, statusCode int) {
+	body := Response[any]{Result: resp}
 	w.WriteHeader(statusCode)
-	_ = enc.Encode(resp)
+	_ = enc.Encode(body)
 	return
 }
