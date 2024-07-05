@@ -3,23 +3,23 @@ package api
 import (
 	"encoding/json"
 	"errors"
-	"github.com/charliegreeny/simple-dating-app/internal/app"
-	"github.com/charliegreeny/simple-dating-app/internal/pkg/user"
+	"github.com/charliegreeny/simple-dating-app/app"
+	"github.com/charliegreeny/simple-dating-app/internal/pkg/user/service"
 	"github.com/go-chi/chi"
 	"github.com/go-playground/validator/v10"
 	"net/http"
 )
 
-type UserHandler struct {
+type User struct {
 	validator *validator.Validate
-	app.GetterCreator[*user.Input, *user.Output]
+	app.GetterCreator[*service.Input, *app.UserOutput]
 }
 
-func NewUserHandler(validator *validator.Validate, creator app.GetterCreator[*user.Input, *user.Output]) *UserHandler {
-	return &UserHandler{validator: validator, GetterCreator: creator}
+func NewUserHandler(validator *validator.Validate, creator app.GetterCreator[*service.Input, *app.UserOutput]) User {
+	return User{validator: validator, GetterCreator: creator}
 }
 
-func (u UserHandler) getUserHandler(w http.ResponseWriter, r *http.Request) {
+func (u User) GetUserHandler(w http.ResponseWriter, r *http.Request) {
 	enc := json.NewEncoder(w)
 	id := chi.URLParam(r, "id")
 	resp, err := u.Get(r.Context(), id)
@@ -35,9 +35,9 @@ func (u UserHandler) getUserHandler(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-func (u UserHandler) createUserHandler(w http.ResponseWriter, r *http.Request) {
+func (u User) CreateUserHandler(w http.ResponseWriter, r *http.Request) {
 	enc := json.NewEncoder(w)
-	var req *user.Input
+	var req *service.Input
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		response(w, enc, app.ErrorOutput{Message: err.Error()}, http.StatusBadRequest)
 		return

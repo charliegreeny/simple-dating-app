@@ -1,6 +1,8 @@
 package app
 
-import "context"
+import (
+	"context"
+)
 
 type Creator[I, T any] interface {
 	Create(ctx context.Context, input I) (T, error)
@@ -13,6 +15,16 @@ type IDGetter[T any] interface {
 type GetterCreator[I, T any] interface {
 	Creator[I, T]
 	IDGetter[T]
+}
+
+type Updater[I, T any] interface {
+	Update(ctx context.Context, input I) (T, error)
+}
+
+type EntityService[I, T any] interface {
+	Creator[I, T]
+	IDGetter[T]
+	Updater[I, T]
 }
 
 type Cache[K, V any] interface {

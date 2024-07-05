@@ -3,22 +3,22 @@ package api
 import (
 	"encoding/json"
 	"errors"
-	"github.com/charliegreeny/simple-dating-app/internal/app"
+	"github.com/charliegreeny/simple-dating-app/app"
 	"github.com/charliegreeny/simple-dating-app/internal/pkg/token"
 	"github.com/go-playground/validator/v10"
 	"net/http"
 )
 
-type LoginHandler struct {
+type Login struct {
 	validator  *validator.Validate
 	loginCache *token.Login
 }
 
-func NewLoginHandler(c *token.Login, validate *validator.Validate) *LoginHandler {
-	return &LoginHandler{loginCache: c, validator: validate}
+func NewLoginHandler(c *token.Login, validate *validator.Validate) Login {
+	return Login{loginCache: c, validator: validate}
 }
 
-func (l LoginHandler) login(w http.ResponseWriter, r *http.Request) {
+func (l Login) Login(w http.ResponseWriter, r *http.Request) {
 	enc := json.NewEncoder(w)
 	var req *token.LoginInput
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

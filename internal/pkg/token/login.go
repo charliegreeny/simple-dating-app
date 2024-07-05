@@ -2,22 +2,20 @@ package token
 
 import (
 	"context"
-	"github.com/charliegreeny/simple-dating-app/config"
-	"github.com/charliegreeny/simple-dating-app/internal/app"
-	"github.com/charliegreeny/simple-dating-app/internal/pkg/user"
+	"github.com/charliegreeny/simple-dating-app/app"
 )
 
 type Login struct {
-	jwtUserCache app.Cache[string, *user.Output]
-	userGetter   app.IDGetter[*user.Output]
+	jwtUserCache app.Cache[string, string]
+	userCache    app.Cache[string, *app.User]
 }
 
-func NewLogin(params *config.TokenParams) *Login {
-	return &Login{jwtUserCache: params.Cache, userGetter: params.UserGetterCreator}
+func NewLogin(jwtCache app.Cache[string, string], userCache app.Cache[string, *app.User]) *Login {
+	return &Login{jwtUserCache: jwtCache, userCache: userCache}
 }
 
 func (l Login) LoginUser(ctx context.Context, input *LoginInput) (*LoginOutput, error) {
-	u, err := l.userGetter.Get(ctx, input.ID)
+	u, err := l.userCache.Get(ctx, input.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -28,7 +26,7 @@ func (l Login) LoginUser(ctx context.Context, input *LoginInput) (*LoginOutput, 
 	if err != nil {
 		return nil, err
 	}
-	err = l.jwtUserCache.Add(ctx, token, u)
+	err = l.jwtUserCache.Add(ctx, token, input.ID)
 	if err != nil {
 		return nil, err
 	}

@@ -4,50 +4,43 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/charliegreeny/simple-dating-app/internal/app"
-	"github.com/charliegreeny/simple-dating-app/internal/pkg/user"
+	"github.com/charliegreeny/simple-dating-app/app"
+	appMock "github.com/charliegreeny/simple-dating-app/mock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"testing"
 )
 
-type mockCache struct {
+type mockJWTCache struct {
 	mock.Mock
 }
 
-func (m *mockCache) Get(_ context.Context, key string) (*user.Output, error) {
+func (m *mockJWTCache) Get(ctx context.Context, key string) (string, error) {
+	m.Called(ctx, key)
+	args := m.Called(ctx, key)
+	return args.String(0), args.Error(1)
+}
+
+func (m *mockJWTCache) GetAll(ctx context.Context) []string {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (m *mockCache) GetAll(_ context.Context) []*user.Output {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (m *mockCache) Add(ctx context.Context, key string, u *user.Output) error {
-	args := m.Called(ctx, key, u)
+func (m *mockJWTCache) Add(ctx context.Context, key string, v string) error {
+	m.Called(ctx, key, v)
+	args := m.Called(ctx, key, v)
 	return args.Error(0)
-}
-
-type mockGetter struct {
-	mock.Mock
-}
-
-func (m *mockGetter) Get(_ context.Context, id string) (*user.Output, error) {
-	args := m.Called(id)
-	return args.Get(0).(*user.Output), args.Error(1)
 }
 
 func TestLogin_LoginUser(t *testing.T) {
 	tests := []struct {
-		name          string
-		input         *LoginInput
-		stubUser      *user.Output
-		stubGetterErr error
-		stubCacheErr  error
-		cacheCalls    int
-		wantErr       assert.ErrorAssertionFunc
+		name             string
+		input            *LoginInput
+		stubUser         *app.UserOutput
+		stubUserCacheErr error
+		stubJWTCacheErr  error
+		cacheCalls       int
+		wantErr          assert.ErrorAssertionFunc
 	}{
 		{
 			name: "successfully login user and returns token and nil error",
@@ -55,14 +48,14 @@ func TestLogin_LoginUser(t *testing.T) {
 				ID:       "id",
 				Password: "pwd",
 			},
-			stubUser: &user.Output{
+			stubUser: &app.UserOutput{
 				ID:       "id",
 				Password: "pwd",
 			},
-			stubGetterErr: nil,
-			stubCacheErr:  nil,
-			cacheCalls:    1,
-			wantErr:       assert.NoError,
+			stubUserCacheErr: nil,
+			stubJWTCacheErr:  nil,
+			cacheCalls:       1,
+			wantErr:          assert.NoError,
 		},
 		{
 			name: "wrong password and returns no token and ErrUnauthorized",
@@ -70,13 +63,13 @@ func TestLogin_LoginUser(t *testing.T) {
 				ID:       "id",
 				Password: "pwd",
 			},
-			stubUser: &user.Output{
+			stubUser: &app.UserOutput{
 				ID:       "id",
 				Password: "strongerPassword",
 			},
-			stubGetterErr: nil,
-			stubCacheErr:  nil,
-			cacheCalls:    0,
+			stubUserCacheErr: nil,
+			stubJWTCacheErr:  nil,
+			cacheCalls:       0,
 			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
 				return errors.Is(err, app.ErrUnauthorized{}) && err.Error() == "invalid password"
 			},
@@ -87,10 +80,10 @@ func TestLogin_LoginUser(t *testing.T) {
 				ID:       "id",
 				Password: "pwd",
 			},
-			stubUser:      nil,
-			stubGetterErr: app.ErrNotFound{Message: "user not found"},
-			stubCacheErr:  nil,
-			cacheCalls:    0,
+			stubUser:         nil,
+			stubUserCacheErr: app.ErrNotFound{Message: "user not found"},
+			stubJWTCacheErr:  nil,
+			cacheCalls:       0,
 			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
 				return errors.Is(err, app.ErrNotFound{}) && err.Error() == "user not found"
 			},
@@ -101,30 +94,31 @@ func TestLogin_LoginUser(t *testing.T) {
 				ID:       "id",
 				Password: "pwd",
 			},
-			stubUser: &user.Output{
+			stubUser: &app.UserOutput{
 				ID:       "id",
 				Password: "pwd",
 			},
-			stubGetterErr: nil,
-			stubCacheErr:  errors.New("cache error"),
-			cacheCalls:    1,
-			wantErr:       assert.Error,
+			stubUserCacheErr: nil,
+			stubJWTCacheErr:  errors.New("cache error"),
+			cacheCalls:       1,
+			wantErr:          assert.Error,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			getterMock := &mockGetter{}
-			getterMock.On("Get", mock.Anything).Return(tt.stubUser, tt.stubGetterErr).Once()
+			userCacheMock := &appMock.UserCache{}
+			userCacheMock.On("Get", context.Background(), tt.input.ID).
+				Return(tt.stubUser, tt.stubUserCacheErr).Once()
 
-			jwtUserCache := &mockCache{}
+			jwtUserCache := &mockJWTCache{}
 			jwtUserCache.On("Add", mock.Anything, mock.Anything,
-				mock.MatchedBy(func(user *user.Output) bool {
+				mock.MatchedBy(func(user *app.UserOutput) bool {
 					return assert.Equal(t, tt.stubUser, user)
 				}),
-			).Return(tt.stubCacheErr).Times(tt.cacheCalls)
+			).Return(tt.stubJWTCacheErr).Times(tt.cacheCalls)
 			l := Login{
 				jwtUserCache: jwtUserCache,
-				userGetter:   getterMock,
+				userCache:    userCacheMock,
 			}
 			got, err := l.LoginUser(context.Background(), tt.input)
 			if !tt.wantErr(t, err) {

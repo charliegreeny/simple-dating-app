@@ -3,31 +3,30 @@ package token
 import (
 	"context"
 	"errors"
-	"github.com/charliegreeny/simple-dating-app/internal/app"
-	"github.com/charliegreeny/simple-dating-app/internal/pkg/user"
+	"github.com/charliegreeny/simple-dating-app/app"
 )
 
 type cache struct {
-	c map[string]*user.Output `name:"jwtCache"`
+	c map[string]string
 }
 
-func NewCache() app.Cache[string, *user.Output] {
-	return &cache{c: map[string]*user.Output{}}
+func NewCache() app.Cache[string, string] {
+	return &cache{c: map[string]string{}}
 }
 
-func (c cache) Get(_ context.Context, jwt string) (*user.Output, error) {
-	u, ok := c.c[jwt]
+func (c cache) Get(_ context.Context, jwt string) (string, error) {
+	uId, ok := c.c[jwt]
 	if !ok || !verifyToken(jwt) {
-		return nil, errors.New("invalid token")
+		return "", errors.New("invalid token")
 	}
-	return u, nil
+	return uId, nil
 }
 
-func (c cache) GetAll(context.Context) []*user.Output {
+func (c cache) GetAll(context.Context) []string {
 	return nil
 }
 
-func (c cache) Add(_ context.Context, jwt string, u *user.Output) error {
-	c.c[jwt] = u
+func (c cache) Add(_ context.Context, jwt string, id string) error {
+	c.c[jwt] = id
 	return nil
 }

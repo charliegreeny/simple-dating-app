@@ -1,6 +1,7 @@
-package user
+package service
 
 import (
+	"github.com/charliegreeny/simple-dating-app/app"
 	"reflect"
 	"testing"
 	"time"
@@ -15,7 +16,7 @@ func TestEntity_toOutput(t *testing.T) {
 	tests := []struct {
 		name   string
 		entity *Entity
-		want   *Output
+		want   *app.UserOutput
 	}{
 		{
 			name: "successfully convert to output with correct age with d.o.b at end of the year",
@@ -27,7 +28,7 @@ func TestEntity_toOutput(t *testing.T) {
 				Email:       "test@email.com",
 				Password:    "Password",
 			},
-			want: &Output{
+			want: &app.UserOutput{
 				ID:       "123",
 				Email:    "test@email.com",
 				Name:     "Charlie G",
@@ -46,7 +47,7 @@ func TestEntity_toOutput(t *testing.T) {
 				Email:       "test@email.com",
 				Password:    "Password",
 			},
-			want: &Output{
+			want: &app.UserOutput{
 				ID:       "123",
 				Email:    "test@email.com",
 				Name:     "Charlie G",
@@ -65,7 +66,7 @@ func TestEntity_toOutput(t *testing.T) {
 				Email:       "test@email.com",
 				Password:    "Password",
 			},
-			want: &Output{
+			want: &app.UserOutput{
 				ID:       "123",
 				Email:    "test@email.com",
 				Name:     "Charlie G",
@@ -84,7 +85,7 @@ func TestEntity_toOutput(t *testing.T) {
 				Email:       "test@email.com",
 				Password:    "Password",
 			},
-			want: &Output{
+			want: &app.UserOutput{
 				ID:       "123",
 				Email:    "test@email.com",
 				Name:     "Charlie G",
@@ -96,7 +97,7 @@ func TestEntity_toOutput(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.entity.toOutput(); !reflect.DeepEqual(got, tt.want) {
+			if got := tt.entity.ToOutput(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("toOutput() = %v, want %v", got, tt.want)
 			}
 		})

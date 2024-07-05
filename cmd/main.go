@@ -2,12 +2,16 @@ package main
 
 import (
 	"github.com/charliegreeny/simple-dating-app/api"
+	handler "github.com/charliegreeny/simple-dating-app/api/handler"
+	"github.com/charliegreeny/simple-dating-app/api/middleware"
 	"github.com/charliegreeny/simple-dating-app/config"
-	"github.com/charliegreeny/simple-dating-app/internal/app"
+	"github.com/charliegreeny/simple-dating-app/internal/pkg/discovery"
+	"github.com/charliegreeny/simple-dating-app/internal/pkg/location"
 	"github.com/charliegreeny/simple-dating-app/internal/pkg/match"
+	"github.com/charliegreeny/simple-dating-app/internal/pkg/preference"
 	"github.com/charliegreeny/simple-dating-app/internal/pkg/token"
-	"github.com/charliegreeny/simple-dating-app/internal/pkg/user"
-	"github.com/charliegreeny/simple-dating-app/middleware"
+	"github.com/charliegreeny/simple-dating-app/internal/pkg/user/cache"
+	"github.com/charliegreeny/simple-dating-app/internal/pkg/user/service"
 	"github.com/go-playground/validator/v10"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
@@ -20,22 +24,19 @@ func main() {
 			validator.New,
 			config.NewSqlDb,
 			middleware.NewAuth,
-			api.NewUserHandler,
-			api.NewLoginHandler,
-			api.NewDiscoveryHandler,
+			middleware.NewLocation,
+			handler.NewUserHandler,
+			handler.NewLoginHandler,
+			handler.NewDiscoveryHandler,
 			token.NewLogin,
-			user.NewCache,
+			token.NewCache,
+			cache.NewCache,
+			service.NewService,
 			match.NewMatcher,
-			newTokenParam,
-			user.NewService,
+			preference.NewService,
+			location.NewService,
+			discovery.NewFilterCombined,
 		),
 		fx.Invoke(api.Router)).
 		Run()
-}
-
-func newTokenParam(gc app.GetterCreator[*user.Input, *user.Output]) *config.TokenParams {
-	return &config.TokenParams{
-		Cache:             token.NewCache(),
-		UserGetterCreator: gc,
-	}
 }

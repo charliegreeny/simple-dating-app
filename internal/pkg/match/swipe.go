@@ -2,8 +2,8 @@ package match
 
 import (
 	"context"
-	"github.com/charliegreeny/simple-dating-app/internal/app"
-	"github.com/charliegreeny/simple-dating-app/internal/pkg/user"
+	"github.com/charliegreeny/simple-dating-app/app"
+	"github.com/charliegreeny/simple-dating-app/appctx"
 	"slices"
 )
 
@@ -23,9 +23,9 @@ func (s swipe) Match(ctx context.Context, input *SwipeInput) (*SwipeOutput, erro
 	if !input.Swipe {
 		return nil, nil
 	}
-	currentUser := user.GetUserFromCtx(ctx)
+	currentUser := appctx.GetUserFromCtx(ctx)
 	if currentUser.ID == input.MatchID {
-		return nil, app.ErrBadRequest{Message: "can not swipe self"}
+		return nil, app.ErrBadRequest{Message: "It is good to love oneself but you can not swipe self"}
 	}
 	go s.updateSwipes(currentUser.ID, input.MatchID)
 	matchSwipes, ok := s.store[input.MatchID]

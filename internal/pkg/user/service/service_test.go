@@ -1,14 +1,16 @@
-package user
+package service
 
 import (
 	"context"
 	"errors"
 	"fmt"
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/charliegreeny/simple-dating-app/internal/app"
-	m "github.com/charliegreeny/simple-dating-app/mock"
-	mysql2 "github.com/go-sql-driver/mysql"
+	"github.com/charliegreeny/simple-dating-app/app"
+	"github.com/charliegreeny/simple-dating-app/internal/pkg/preference"
+	appMock "github.com/charliegreeny/simple-dating-app/mock"
+	"github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 	"testing"
@@ -21,24 +23,23 @@ var mockUUID = func() string {
 
 func Test_service_Get(t *testing.T) {
 	dob, _ := time.Parse("2006-01-02", "1999-12-31")
-	mock, gormDb, db := m.MockDb(t)
-	defer db.Close()
 	tests := []struct {
-		name     string
-		id       string
-		stubRows *sqlmock.Rows
-		stubErr  error
-		want     *Output
-		wantErr  assert.ErrorAssertionFunc
+		name         string
+		id           string
+		stubRows     *sqlmock.Rows
+		stubSQLErr   error
+		stubCacheErr error
+		want         *app.UserOutput
+		wantErr      assert.ErrorAssertionFunc
 	}{
 		{
-			name: "successfully return user entity and nil error",
+			name: "successfully return cached entity and nil error",
 			id:   "id",
 			stubRows: sqlmock.NewRows([]string{
 				"id", "name", "gender", "date_of_birth", "email", "password"}).
 				AddRow("id", "First Last", "FEMALE", dob, "test@email.com", "password"),
-			stubErr: nil,
-			want: &Output{
+			stubSQLErr: nil,
+			want: &app.UserOutput{
 				ID:       "id",
 				Name:     "First Last",
 				Gender:   "FEMALE",
@@ -49,12 +50,31 @@ func Test_service_Get(t *testing.T) {
 			wantErr: assert.NoError,
 		},
 		{
-			name: "no user found returns nil output and ErrNotFound",
+			name:         "successfully return entity from db and nil error",
+			id:           "id",
+			stubCacheErr: app.ErrNotFound{Message: "not found"},
+			stubRows: sqlmock.NewRows([]string{
+				"id", "name", "gender", "date_of_birth", "email", "password"}).
+				AddRow("id", "First Last", "FEMALE", dob, "test@email.com", "password"),
+			stubSQLErr: nil,
+			want: &app.UserOutput{
+				ID:       "id",
+				Name:     "First Last",
+				Gender:   "FEMALE",
+				Age:      24,
+				Email:    "test@email.com",
+				Password: "password",
+			},
+			wantErr: assert.NoError,
+		},
+		{
+			name: "no cache and no db record returns nil output and ErrNotFound",
 			id:   "id",
 			stubRows: sqlmock.NewRows([]string{
 				"id", "name", "gender", "date_of_birth", "email", "password"}),
-			stubErr: gorm.ErrRecordNotFound,
-			want:    nil,
+			stubSQLErr:   gorm.ErrRecordNotFound,
+			stubCacheErr: app.ErrNotFound{Message: "not found"},
+			want:         nil,
 			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
 				return errors.As(err, &app.ErrNotFound{})
 			},
@@ -64,24 +84,31 @@ func Test_service_Get(t *testing.T) {
 			id:   "id",
 			stubRows: sqlmock.NewRows([]string{
 				"id", "name", "gender", "date_of_birth", "email", "password"}),
-			stubErr: gorm.ErrInvalidDB,
-			want:    nil,
+			stubCacheErr: app.ErrNotFound{Message: "not found"},
+			stubSQLErr:   gorm.ErrInvalidDB,
+			want:         nil,
 			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
-				return errors.Is(err, fmt.Errorf("db error getting user: %w", gorm.ErrInvalidDB))
+				return errors.Is(err, fmt.Errorf("db error getting cache: %w", gorm.ErrInvalidDB))
 			},
 		},
 	}
 	for _, tt := range tests {
+		sqlMock, gormDb, db := appMock.MockDb(t)
+		defer db.Close()
 		t.Run(tt.name, func(t *testing.T) {
+			mockCache := &appMock.UserCache{}
+			mockCache.On("Get", context.Background(), mock.Anything).
+				Return(&app.User{UserOutput: tt.want}, tt.stubCacheErr).Maybe()
 			s := service{
-				db:  gormDb,
-				log: zap.NewNop(),
+				db:    gormDb,
+				log:   zap.NewNop(),
+				cache: mockCache,
 			}
-			m := mock.ExpectQuery("SELECT (.+) FROM `users` WHERE id =(.+)").
+			m := sqlMock.ExpectQuery("SELECT (.+) FROM `users` WHERE id =(.+)").
 				WithArgs(tt.id, 1).WillReturnRows(tt.stubRows)
 
-			if tt.stubErr != nil {
-				m.WillReturnError(tt.stubErr)
+			if tt.stubSQLErr != nil {
+				m.WillReturnError(tt.stubSQLErr)
 			}
 
 			got, err := s.Get(context.Background(), tt.id)
@@ -97,12 +124,13 @@ func Test_service_Create(t *testing.T) {
 	tests := []struct {
 		name       string
 		input      *Input
-		want       *Output
+		want       *app.UserOutput
 		stubSQLErr error
 		wantErr    assert.ErrorAssertionFunc
+		cacheCalls int
 	}{
 		{
-			name: "successfully insert and return user and nil error",
+			name: "successfully insert and return cache and nil error",
 			input: &Input{
 				Name:     "First Last",
 				Email:    "test@email.com",
@@ -110,7 +138,7 @@ func Test_service_Create(t *testing.T) {
 				Dob:      "2000-01-01",
 				Password: "pwd",
 			},
-			want: &Output{
+			want: &app.UserOutput{
 				ID:       mockUUID(),
 				Email:    "test@email.com",
 				Name:     "First Last",
@@ -119,6 +147,7 @@ func Test_service_Create(t *testing.T) {
 				Password: "pwd",
 			},
 			stubSQLErr: nil,
+			cacheCalls: 1,
 			wantErr:    assert.NoError,
 		},
 		{
@@ -138,7 +167,7 @@ func Test_service_Create(t *testing.T) {
 			},
 		},
 		{
-			name: "18 today returns Output and nil error",
+			name: "18 today returns UserOutput and nil error",
 			input: &Input{
 				Name:     "First Last",
 				Email:    "test@email.com",
@@ -146,7 +175,7 @@ func Test_service_Create(t *testing.T) {
 				Dob:      time.Now().AddDate(-18, 0, 0).Format(time.DateOnly),
 				Password: "pwd",
 			},
-			want: &Output{
+			want: &app.UserOutput{
 				ID:       mockUUID(),
 				Email:    "test@email.com",
 				Name:     "First Last",
@@ -154,6 +183,7 @@ func Test_service_Create(t *testing.T) {
 				Age:      18,
 				Password: "pwd",
 			},
+			cacheCalls: 1,
 			stubSQLErr: nil,
 			wantErr:    assert.NoError,
 		},
@@ -170,7 +200,7 @@ func Test_service_Create(t *testing.T) {
 			stubSQLErr: nil,
 			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
 				return errors.Is(err, app.ErrForbidden{}) &&
-					err.Error() == "user must be at least 18 years old"
+					err.Error() == "cache must be at least 18 years old"
 			},
 		},
 		{
@@ -183,8 +213,8 @@ func Test_service_Create(t *testing.T) {
 				Password: "pwd",
 			},
 			want: nil,
-			stubSQLErr: &mysql2.MySQLError{
-				Number:  foreignKeyErrCode,
+			stubSQLErr: &mysql.MySQLError{
+				Number:  app.ForeignKeyErrCode,
 				Message: "foreign key constraint failed",
 			},
 			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
@@ -201,8 +231,8 @@ func Test_service_Create(t *testing.T) {
 				Password: "pwd",
 			},
 			want: nil,
-			stubSQLErr: &mysql2.MySQLError{
-				Number:   duplicateKeyErrCode,
+			stubSQLErr: &mysql.MySQLError{
+				Number:   app.DuplicateKeyErrCode,
 				SQLState: [5]byte{},
 				Message:  "duplicate key error",
 			},
@@ -212,23 +242,33 @@ func Test_service_Create(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		mock, gormDb, db := m.MockDb(t)
+		sqlMock, gormDb, db := appMock.MockDb(t)
 		t.Run(tt.name, func(t *testing.T) {
+			cacheMock := &appMock.UserCache{}
+			cacheMock.On("Add", context.Background(), mock.MatchedBy(func(u *app.User) bool {
+				return assert.Equal(t, &app.User{
+					UserOutput:   tt.want,
+					Pref:         preference.DefaultPreferences(tt.want.ID, tt.want.Gender),
+					Loc:          nil,
+					DistanceFrom: 0,
+				}, u)
+			})).
+				Return(nil).Times(tt.cacheCalls)
+
 			s := service{
 				db:      gormDb,
 				uuidGen: mockUUID,
 				log:     zap.NewNop(),
-				//TODO add mock cache and assert called once
-				cache: NewCache(gormDb),
+				cache:   cacheMock,
 			}
-			mock.ExpectBegin()
-			m := mock.ExpectExec("INSERT INTO `users` (.+) VALUES (.+)").
+			sqlMock.ExpectBegin()
+			m := sqlMock.ExpectExec("INSERT INTO `users` (.+) VALUES (.+)").
 				WillReturnResult(sqlmock.NewResult(1, 1))
 			if tt.stubSQLErr != nil {
-				mock.ExpectRollback()
+				sqlMock.ExpectRollback()
 				m.WillReturnError(tt.stubSQLErr)
 			} else {
-				mock.ExpectCommit()
+				sqlMock.ExpectCommit()
 			}
 
 			got, err := s.Create(context.Background(), tt.input)

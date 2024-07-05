@@ -1,6 +1,9 @@
-package user
+package service
 
-import "time"
+import (
+	"github.com/charliegreeny/simple-dating-app/app"
+	"time"
+)
 
 type Input struct {
 	Name     string `json:"name" validate:"required"`
@@ -8,15 +11,6 @@ type Input struct {
 	Gender   string `json:"gender" validate:"required"`
 	Dob      string `json:"dateOfBirth" validate:"required"`
 	Password string `json:"password" validate:"required"`
-}
-
-type Output struct {
-	ID       string `json:"id"`
-	Email    string `json:"email"`
-	Name     string `json:"name"`
-	Gender   string `json:"gender"`
-	Age      int    `json:"age"`
-	Password string `json:"password"`
 }
 
 type Entity struct {
@@ -32,9 +26,9 @@ func (e Entity) TableName() string {
 	return "users"
 }
 
-func (e Entity) toOutput() *Output {
+func (e Entity) ToOutput() *app.UserOutput {
 	age := calcAge(e.DateOfBirth)
-	return &Output{
+	return &app.UserOutput{
 		ID:       e.ID,
 		Name:     e.Name,
 		Gender:   e.Gender,
