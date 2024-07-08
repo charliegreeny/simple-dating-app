@@ -64,13 +64,14 @@ func (s service) Update(ctx context.Context, input *app.Location) (*app.Location
 	if u == nil {
 		return nil, errors.New("invalid data: could not find user updating location")
 	}
+	input.UserID = u.ID
 	if u.Loc == nil {
 		return s.Create(ctx, input)
 	}
 	if input == u.Loc {
 		return u.Loc, nil
 	}
- u.Loc = input
+ 	u.Loc = input
 	go func(u *app.User) {
 		s.updateUserCache(u, ctx, input)
 	}(u)
